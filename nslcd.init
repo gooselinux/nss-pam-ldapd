@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# chkconfig: - 12 88 
+# description: Provides naming services using a directory server.
+# processname: /usr/sbin/nslcd
+# config: /etc/nslcd.conf
+# pidfile: /var/run/nslcd/nslcd.pid
+#
+
+### BEGIN INIT INFO
+# Provides: nslcd
+# Required-Start: $network
+# Required-Stop:
+# Default-Start:
+# Default-Stop:
+# Short-Description: naming services LDAP client daemon
+# Description: Provides naming services using a directory server.
+### END INIT INFO
+
+program=/usr/sbin/nslcd
+prog=${program##*/}
+pidfile=/var/run/nslcd/nslcd.pid
+
+if [ -f /etc/rc.d/init.d/functions ]; then
+	. /etc/rc.d/init.d/functions
+fi
+
+RETVAL=0
+
+start() {
+    echo -n $"Starting $prog: "
+    daemon $program
+    RETVAL=$?
+    echo
+    [ $RETVAL -eq 0 ] && touch /var/lock/subsys/$prog
+    return $RETVAL
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc $program
+    RETVAL=$?
+    echo
+    if [ $RETVAL -eq 0 ]; then
+	rm -f /var/lock/subsys/$prog
+    fi
+}
+
+restart() {
+    stop
+    start
+}
+
+# See how we were called.
+case "$1" in
+    start)
+        [ -f /var/lock/subsys/$prog ] && exit 0
+        $1
+        ;;
+    stop)
+        [ -f /var/lock/subsys/$prog ] || exit 0
+        $1
+        ;;
+    restart)
+        $1
+        ;;
+    status)
+        status -p $pidfile $program
+        RETVAL=$?
+        ;;
+    condrestart|try-restart)
+        [ -f /var/lock/subsys/$prog ] && restart || :
+        ;;
+    reload)
+        echo "can't reload configuration, you have to restart it"
+        RETVAL=3
+        ;;
+    force-reload)
+        restart
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload}"
+        exit 1
+        ;;
+esac
+exit $RETVAL

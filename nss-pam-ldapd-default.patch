@@ -1,0 +1,54 @@
+Store an empty string in the passed-in buffer, even if we don't manage to get
+the desired value from the entry.
+
+Index: nslcd/attmap.c
+===================================================================
+--- nslcd/attmap.c	(revision 1110)
++++ nslcd/attmap.c	(revision 1111)
+@@ -251,20 +251,25 @@
+   return values[0];
+ }
+ 
+-MUST_USE const char *attmap_get_value(MYLDAP_ENTRY *entry,const char *attr,char *buffer,size_t buflen)
++const char *attmap_get_value(MYLDAP_ENTRY *entry,const char *attr,char *buffer,size_t buflen)
+ {
+   const char **values;
++  /* check and clear buffer */
++  if ((buffer==NULL)||(buflen<=0))
++    return NULL;
++  buffer[0]='\0';
+   /* for simple values just return the attribute */
+   if (attr[0]!='"')
+   {
+     values=myldap_get_values(entry,attr);
+-    if (values==NULL)
++    if ((values==NULL)||(values[0]==NULL))
+       return NULL;
+     strncpy(buffer,values[0],buflen);
+     buffer[buflen-1]='\0';
+     return buffer;
+     /* TODO: maybe warn when multiple values are found */
+   }
++  /* we have an expression, try to parse */
+   if ( (attr[strlen(attr)-1]!='"') ||
+        (expr_parse(attr+1,buffer,buflen,entry_expand,(void *)entry)==NULL) )
+   {
+Index: nslcd/attmap.h
+===================================================================
+--- nslcd/attmap.h	(revision 1110)
++++ nslcd/attmap.h	(revision 1111)
+@@ -86,11 +86,11 @@
+ 
+ /* Set the attribute mapping of the variable to the value specified.
+    Returns the new value on success. */
++MUST_USE const char *attmap_set_mapping(const char **var,const char *value);
+ 
+-const char *attmap_set_mapping(const char **var,const char *value);
+-
+ /* Return a value for the attribute, handling the case where attr
+-   is an expression. */
++   is an expression. On error (e.g. problem parsing expression, attribute
++   value not found) it returns NULL and the buffer is made empty. */
+ const char *attmap_get_value(MYLDAP_ENTRY *entry,const char *attr,char *buffer,size_t buflen);
+ 
+ /* Add the attributes from attr to the set. The attr argumenent
